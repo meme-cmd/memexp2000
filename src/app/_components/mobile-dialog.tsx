@@ -28,7 +28,6 @@ export function MobileDialog({
 }: MobileDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
 
-  // Find the icon for the dialog
   const windowIcon = (() => {
     const defaultIcon = "/bg.jpg";
     const allIcons = [ICONS[0], ...ICONS];
@@ -36,7 +35,6 @@ export function MobileDialog({
     return icon?.image ?? defaultIcon;
   })();
 
-  // Handle escape key to close dialog
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen && onClose) {
@@ -55,7 +53,6 @@ export function MobileDialog({
       className="mobile-dialog-content animate-fade-in fixed inset-0 z-[50] flex flex-col bg-[#f0f0f0]/95 backdrop-blur-sm md:hidden"
       ref={dialogRef}
     >
-      {/* Title bar */}
       <div className="sticky top-0 z-10 flex h-16 items-center justify-between bg-gradient-to-r from-[#000080] via-[#0060B0] to-[#1084d0] px-5 py-2 shadow-md">
         <div className="flex items-center gap-3">
           {onBack && (
@@ -86,7 +83,6 @@ export function MobileDialog({
         )}
       </div>
 
-      {/* Content */}
       <div
         className={cn(
           "w-full flex-1 overflow-y-auto p-4 text-black",

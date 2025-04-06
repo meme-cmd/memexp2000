@@ -86,7 +86,6 @@ export function UserProfileForm() {
 
   return (
     <form onSubmit={handleSubmit} className="p-4">
-      {/* Profile Image Section */}
       <div className="mb-6 flex flex-col items-center">
         <div className="relative">
           {profileImage ? (
@@ -123,7 +122,6 @@ export function UserProfileForm() {
         </div>
       </div>
 
-      {/* Form Fields */}
       <div className="space-y-4">
         <div className="flex items-center">
           <label className="w-24 font-chicago text-sm">Username</label>
@@ -156,7 +154,6 @@ export function UserProfileForm() {
         </div>
       </div>
 
-      {/* Save Button */}
       <div className="mt-6 flex justify-end">
         <button
           type="submit"

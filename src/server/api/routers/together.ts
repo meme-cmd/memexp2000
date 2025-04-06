@@ -143,7 +143,6 @@ export const togetherRouter = createTRPCRouter({
           "traits": ["Juxtaposed descriptors", "e.g., 'Analytical Poet'"]
         }`;
 
-        // Add specific instructions for valid JSON formatting
         prompt += `\n\nIMPORTANT: Return ONLY valid JSON with no explanations, comments, or text outside the JSON structure. Do not include parenthetical statements or any explanations outside of the string values. All values must be properly quoted, and trailing commas should be avoided.`;
 
         try {
@@ -170,28 +169,22 @@ export const togetherRouter = createTRPCRouter({
           try {
             const content = response.choices[0].message.content;
 
-            // Extract JSON from markdown code blocks - check for triple backticks first, then single backticks
             let jsonStr = content;
 
-            // Try to extract from triple backtick markdown code blocks
             const tripleBacktickMatch = /```(?:json)?\n([\s\S]*?)\n```/.exec(
               content,
             );
             if (tripleBacktickMatch) {
               jsonStr = tripleBacktickMatch[1];
-            }
-            // If no triple backtick match, try single backtick code blocks
-            else {
+            } else {
               const singleBacktickMatch = /`({[\s\S]*?})`/.exec(content);
               if (singleBacktickMatch) {
                 jsonStr = singleBacktickMatch[1];
               }
             }
 
-            // Clean up any remaining markdown or text descriptions
             let cleanJsonStr = jsonStr.trim();
 
-            // Remove any trailing text after the last closing bracket
             const lastBracketIndex = cleanJsonStr.lastIndexOf("}");
             if (
               lastBracketIndex !== -1 &&
@@ -201,7 +194,6 @@ export const togetherRouter = createTRPCRouter({
             }
 
             try {
-              // First attempt: parse as is
               agentData = JSON.parse(cleanJsonStr) as {
                 name: string;
                 type: string;
@@ -219,19 +211,15 @@ export const togetherRouter = createTRPCRouter({
                 parseError,
               );
 
-              // Second attempt: Try to fix common LLM JSON errors
               let fixedJsonStr = cleanJsonStr;
 
-              // Fix 1: Replace parenthetical comments outside quotes
               fixedJsonStr = fixedJsonStr.replace(
                 /"([^"]+)":\s*"([^"]*)"\s*\([^)]*\)/g,
                 '"$1": "$2"',
               );
 
-              // Fix 2: Remove trailing commas in objects
               fixedJsonStr = fixedJsonStr.replace(/,(\s*})/g, "$1");
 
-              // Fix 3: Fix potential unescaped quotes within string values
               fixedJsonStr = fixedJsonStr.replace(
                 /:\s*"(.*?)([^\\])"(.*?)"/g,
                 (match, p1, p2, p3: string) => {
@@ -252,14 +240,11 @@ export const togetherRouter = createTRPCRouter({
                   communicationStyle: string | Record<string, string>;
                 };
               } catch (secondParseError: unknown) {
-                // If all else fails, try a more aggressive approach
                 console.warn(
                   "Second JSON parse attempt failed:",
                   secondParseError,
                 );
 
-                // Use a library like json-repair or a custom function if you have one
-                // For now, we'll throw a more descriptive error
                 console.error(
                   "Failed to parse JSON even after cleanup:",
                   fixedJsonStr,
@@ -270,7 +255,6 @@ export const togetherRouter = createTRPCRouter({
               }
             }
 
-            // Validate the parsed data has required fields
             if (!agentData.name || !agentData.type || !agentData.description) {
               console.error(
                 "Missing required fields in parsed data:",
@@ -279,7 +263,6 @@ export const togetherRouter = createTRPCRouter({
               throw new Error("Invalid agent data structure");
             }
 
-            // Handle nested objects in the response
             if (
               typeof agentData.background === "object" &&
               agentData.background !== null
@@ -337,7 +320,6 @@ export const togetherRouter = createTRPCRouter({
 
           const validatedAgent = AgentSchema.parse({
             ...agentData,
-            // Preserve user input data only if not random
             name: input.isRandom ? agentData.name : input.name,
             personality: input.personality,
             background: input.background,
@@ -345,7 +327,6 @@ export const togetherRouter = createTRPCRouter({
             coreBeliefs: input.coreBeliefs,
             quirks: input.quirks,
             communicationStyle: input.communicationStyle,
-            // System generated fields
             id: uuidv4(),
             createdAt: new Date(),
             visibility: input.visibility,
@@ -443,7 +424,6 @@ export const togetherRouter = createTRPCRouter({
         const timestamp = new Date().getTime();
         const conversationId = Math.random().toString(36).slice(2, 8);
 
-        // Save user message
         const userMessage: AgentMessage = {
           agentId: agent.id,
           content: input.content,
@@ -455,19 +435,17 @@ export const togetherRouter = createTRPCRouter({
           sequence: 1,
         };
 
-        // Save agent response
         const agentMessage: AgentMessage = {
           agentId: agent.id,
           content: agentResponse,
           response: "",
-          timestamp: new Date(timestamp + 1), // Ensure agent message comes right after user message
-          userId: undefined, // undefined means it's from the agent
+          timestamp: new Date(timestamp + 1),
+          userId: undefined,
           conversationId,
           messageType: "agent",
           sequence: 2,
         };
 
-        // Save messages in chat history
         await Promise.all([
           storage.saveObject(
             `agents/${input.agentId}/chat_history/${input.userId}/${timestamp}_1_user_${conversationId}.json`,
@@ -479,7 +457,6 @@ export const togetherRouter = createTRPCRouter({
           ),
         ]);
 
-        // Update agent's chat summary
         const chatSummaryKey = `agents/${input.agentId}/chat_summary.json`;
         let chatSummary = await storage
           .getObject<ChatSummary>(chatSummaryKey)
@@ -592,24 +569,20 @@ export const togetherRouter = createTRPCRouter({
     )
     .query(async ({ input }) => {
       try {
-        // Verify the agent exists first
         try {
           const agent = await storage.getObject<Agent>(
             `agents/${input.agentId}.json`,
           );
           if (!agent) {
             console.warn(`Agent not found: ${input.agentId}`);
-            // Don't throw, just return empty results
           }
         } catch (error) {
           console.warn(
             `Error checking agent existence: ${input.agentId}`,
             error,
           );
-          // Don't throw, just continue to get chat history
         }
 
-        // List all messages in the chat history directory
         const chatHistoryPrefix = `agents/${input.agentId}/chat_history/${input.userId}/`;
         const messagesPrefix = `agents/${input.agentId}/users/${input.userId}/messages/`;
 
@@ -627,7 +600,6 @@ export const togetherRouter = createTRPCRouter({
           messageFiles = { objects: [] };
         }
 
-        // Get all messages from both locations with improved error handling
         const messages = await Promise.all([
           ...(chatHistoryFiles.objects ?? []).map(async (obj) => {
             if (!obj.key) return null;
@@ -649,7 +621,6 @@ export const togetherRouter = createTRPCRouter({
           }),
         ]);
 
-        // Filter out nulls and deduplicate messages based on content and timestamp
         const messageMap = new Map<string, AgentMessage>();
         messages
           .filter((msg): msg is AgentMessage => msg !== null)
@@ -660,7 +631,6 @@ export const togetherRouter = createTRPCRouter({
             }
           });
 
-        // Convert back to array and sort by timestamp
         const validMessages = Array.from(messageMap.values())
           .sort(
             (a, b) =>
@@ -668,7 +638,6 @@ export const togetherRouter = createTRPCRouter({
           )
           .slice(0, input.limit ?? 50);
 
-        // Get chat summary
         const chatSummary = await storage
           .getObject<ChatSummary>(`agents/${input.agentId}/chat_summary.json`)
           .catch(() => null);
@@ -679,7 +648,6 @@ export const togetherRouter = createTRPCRouter({
         };
       } catch (error) {
         console.error("Failed to retrieve chat history:", error);
-        // Return empty results instead of throwing
         return {
           messages: [],
           summary: null,

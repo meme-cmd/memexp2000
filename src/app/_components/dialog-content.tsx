@@ -20,7 +20,6 @@ import { BackroomChat } from "./backroom-chat";
 import { UserProfileForm } from "./user-profile-form";
 import { useState } from "react";
 
-// Create a simple window size hook for mobile detection
 function useWindowSize() {
   const [size, setSize] = useState({
     width: typeof window !== "undefined" ? window.innerWidth : 0,
@@ -52,9 +51,8 @@ export function DialogContent() {
   const { setCurrentConversation, clearCurrentConversation } = useChatStore();
   const { currentView } = useNavigationStore();
 
-  // Use window size hook to determine if we're on mobile
   const windowSize = useWindowSize();
-  const isMobile = windowSize.width < 768; // md breakpoint is typically 768px
+  const isMobile = windowSize.width < 768;
 
   const agentsQuery = api.r2.listAgents.useQuery(
     { limit: 1000, creator: publicKey ?? undefined },
@@ -123,7 +121,6 @@ export function DialogContent() {
       const store = useDialogStore.getState();
       store.updateDialogView(dialogId, view);
     } catch (error) {
-      // Don't log error to console
       if (
         error instanceof Error &&
         (error.message.includes("rejected") ||
@@ -146,7 +143,6 @@ export function DialogContent() {
       const store = useDialogStore.getState();
       store.updateDialogView(dialogId, view);
     } catch (error) {
-      // Don't log error to console
       if (
         error instanceof Error &&
         (error.message.includes("rejected") ||
@@ -177,7 +173,6 @@ export function DialogContent() {
       const store = useDialogStore.getState();
       store.updateDialogView(dialogId, view);
     } catch (error) {
-      // Don't log error to console
       if (
         error instanceof Error &&
         (error.message.includes("rejected") ||
@@ -377,7 +372,6 @@ export function DialogContent() {
         const showBack = useDialogStore.getState().canGoBack(dialog.id);
         const content = renderDialogContent(dialog);
 
-        // Render mobile or desktop dialog based on screen size
         if (isMobile) {
           return (
             <MobileDialog
@@ -394,7 +388,6 @@ export function DialogContent() {
           );
         }
 
-        // Desktop view (unchanged)
         return (
           <Box
             key={dialog.id}

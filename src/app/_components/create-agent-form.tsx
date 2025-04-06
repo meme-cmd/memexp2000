@@ -13,22 +13,15 @@ import {
   PublicKey,
   Transaction,
   ComputeBudgetProgram,
+  SystemProgram,
 } from "@solana/web3.js";
 import { useDialogStore } from "@/store/dialog-store";
-import {
-  createTransferInstruction,
-  createAssociatedTokenAccountInstruction,
-  getAssociatedTokenAddressSync,
-  getMint,
-  TOKEN_PROGRAM_ID,
-  getAccount,
-} from "@solana/spl-token";
+import { env } from "@/env";
 
 interface CreateAgentFormProps {
   onSuccess?: () => void;
 }
 
-// Add type for injected wallet
 declare global {
   interface Window {
     solana?: {
@@ -37,9 +30,8 @@ declare global {
   }
 }
 
-const PAYMENT_AMOUNT = 10000; // 10,000 ZYNC
+const PAYMENT_AMOUNT = 0.1;
 const RECIPIENT_ADDRESS = "5HypJG3eMU9dmMzSKCaKunsjpMT6eXuiUGnukmc9ouHz";
-const MINT_ADDRESS = "6sLPWn293q3hGMF9mhQAkxnqy2Kz4sQZVW2jQ2Nypump";
 
 export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
   const router = useRouter();
@@ -82,7 +74,6 @@ export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
 
       agentToast.success(`${data.agent.name} agent deployed successfully!`);
 
-      // Navigate back to agents list
       dialogStore.updateDialogView("AGENTS", {
         id: "AGENTS",
         title: "Agents",
@@ -107,7 +98,6 @@ export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
       });
     } catch (_error) {
       /* eslint-disable-line @typescript-eslint/no-unused-vars */
-      // Don't log error to console
       agentToast.error("Failed to create agent");
     } finally {
       setIsProcessingPayment(false);
@@ -122,75 +112,28 @@ export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
 
     try {
       setIsProcessingPayment(true);
-      const connection = new Connection(
-        "https://mainnet.helius-rpc.com/?api-key=a018a555-b435-4629-a61b-6e001431ca58",
-        {
-          commitment: "confirmed",
-        },
-      );
-
-      const mint = new PublicKey(MINT_ADDRESS);
-      const mintInfo = await getMint(connection, mint);
-      const decimals = mintInfo.decimals;
-      const amount = BigInt(PAYMENT_AMOUNT) * BigInt(10 ** decimals);
+      const connection = new Connection(env.MAINNET_RPC, {
+        commitment: "confirmed",
+      });
 
       const sender = new PublicKey(publicKey);
       const recipient = new PublicKey(RECIPIENT_ADDRESS);
-
-      const senderTokenAccount = getAssociatedTokenAddressSync(mint, sender);
-      const recipientTokenAccount = getAssociatedTokenAddressSync(
-        mint,
-        recipient,
-      );
+      const lamports = PAYMENT_AMOUNT * 1_000_000_000;
 
       const transaction = new Transaction();
 
-      // Add priority fee to improve transaction success rate
       transaction.add(
         ComputeBudgetProgram.setComputeUnitPrice({
           microLamports: 100000,
         }),
       );
 
-      // Check if sender has token account
-      try {
-        await getAccount(connection, senderTokenAccount);
-      } catch (error) {
-        agentToast.info("Creating token account for your wallet...");
-        transaction.add(
-          createAssociatedTokenAccountInstruction(
-            sender,
-            senderTokenAccount,
-            sender,
-            mint,
-          ),
-        );
-      }
-
-      // Check if recipient token account exists
-      const recipientAccountInfo = await connection.getAccountInfo(
-        recipientTokenAccount,
-      );
-      if (!recipientAccountInfo) {
-        transaction.add(
-          createAssociatedTokenAccountInstruction(
-            sender,
-            recipientTokenAccount,
-            recipient,
-            mint,
-          ),
-        );
-      }
-
       transaction.add(
-        createTransferInstruction(
-          senderTokenAccount,
-          recipientTokenAccount,
-          sender,
-          amount,
-          [],
-          TOKEN_PROGRAM_ID,
-        ),
+        SystemProgram.transfer({
+          fromPubkey: sender,
+          toPubkey: recipient,
+          lamports,
+        }),
       );
 
       const { blockhash, lastValidBlockHeight } =
@@ -198,12 +141,10 @@ export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = sender;
 
-      // Attempt to sign the transaction, handle rejection
       let signed;
       try {
         signed = await window.solana.signTransaction(transaction);
       } catch (error) {
-        // Handle user rejection
         if (
           error instanceof Error &&
           (error.message.includes("rejected") ||
@@ -217,7 +158,6 @@ export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
         return;
       }
 
-      // Add retry logic for sending transaction
       let signature;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
@@ -238,10 +178,8 @@ export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
         throw new Error("Failed to send transaction after retries");
       }
 
-      // Show pending status
       agentToast.info("Transaction pending...");
 
-      // Wait for transaction confirmation
       const confirmationStatus = await connection.confirmTransaction(
         {
           signature,
@@ -257,10 +195,8 @@ export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
         );
       }
 
-      // Add a longer delay to allow for network propagation and indexing
       await new Promise((resolve) => setTimeout(resolve, 5000));
 
-      // Verify the transaction with retries
       let txInfo = null;
       for (let i = 0; i < 3; i++) {
         try {
@@ -271,7 +207,6 @@ export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
 
           if (txInfo?.meta) break;
 
-          // Show status update for retries
           if (i < 2) {
             agentToast.info(`Verifying transaction (attempt ${i + 1}/3)...`);
             await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -290,7 +225,6 @@ export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
         );
       }
 
-      // Additional delay before server verification
       await new Promise((resolve) => setTimeout(resolve, 2000));
       agentToast.info("Verifying payment...");
 
@@ -299,7 +233,6 @@ export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
         payerPublicKey: publicKey,
       });
     } catch (error) {
-      // Don't log error to console
       if (
         error instanceof Error &&
         (error.message.includes("rejected") ||
@@ -358,12 +291,11 @@ export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
     }));
   };
 
-  // Helper function to determine button text
   const getButtonText = () => {
     if (createAgent.isPending) return "Creating...";
     if (isProcessingPayment) return "Processing Payment...";
     if (publicKey && isWalletVerified(publicKey)) return "Create Agent";
-    return `Pay ${PAYMENT_AMOUNT.toLocaleString()} $ZYNC`;
+    return `Pay ${PAYMENT_AMOUNT} SOL`;
   };
 
   return (

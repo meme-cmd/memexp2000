@@ -10,7 +10,6 @@ import { env } from "@/env";
 
 const together = new Together({ apiKey: env.TOGETHER_API });
 
-// Define type for token parameters
 interface TokenParameters {
   name: string;
   symbol: string;
@@ -19,7 +18,6 @@ interface TokenParameters {
   description: string;
 }
 
-// Define OpenAI API response types
 interface OpenAIMessage {
   role: string;
   content: string;
@@ -44,7 +42,6 @@ interface OpenAIResponse {
   };
 }
 
-// Create Zod schema for token parameters validation
 const TokenParametersSchema = z.object({
   name: z.string(),
   symbol: z.string(),
@@ -53,7 +50,6 @@ const TokenParametersSchema = z.object({
   description: z.string(),
 });
 
-// Add type for PumpFun options
 interface PumpFunTokenOptions {
   twitter?: string;
   telegram?: string;
@@ -119,7 +115,6 @@ export const backroomRouter = createTRPCRouter({
           backroom.status !== "active" ||
           backroom.messages.length >= backroom.messageLimit
         ) {
-          // Automatically start the backroom if it's in pending state
           if (backroom.status === "pending") {
             backroom.status = "active";
             await storage.saveObject(`backrooms/${backroom.id}.json`, backroom);
@@ -199,13 +194,11 @@ ${history}`;
 
         let messageContent = response.choices[0]?.message?.content ?? "";
 
-        // Clean up the response while preserving personality quirks
         messageContent = messageContent
           .replace(new RegExp(`^${agent.name}:?\\s*`, "i"), "")
           .replace(/^["']|["']$/g, "")
           .trim();
 
-        // Ensure the message isn't cut off
         if (!/[.!?]$/.exec(messageContent)) {
           messageContent += ".";
         }
@@ -230,11 +223,9 @@ ${history}`;
         backroom.messages.push(newMessage);
         backroom.updatedAt = new Date();
 
-        // Handle conversation completion
         if (backroom.messages.length >= backroom.messageLimit) {
           backroom.status = "completed";
 
-          // Store conversation summary
           const conversationSummary = {
             id: backroom.id,
             topic: backroom.topic,
@@ -250,7 +241,6 @@ ${history}`;
             conversationSummary,
           );
 
-          // Store detailed conversation history
           const conversationHistory = {
             ...backroom,
             analytics: {
@@ -279,7 +269,6 @@ ${history}`;
           );
         }
 
-        // Save the updated backroom
         await storage.saveObject(`backrooms/${backroom.id}.json`, backroom);
 
         return {
@@ -300,7 +289,7 @@ ${history}`;
     .input(
       z.object({
         backroomId: z.string(),
-        walletPublicKey: z.string(), // Add user's wallet public key as input
+        walletPublicKey: z.string(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -324,7 +313,6 @@ ${history}`;
           });
         }
 
-        // Check if a token has already been launched for this backroom
         let existingToken = null;
         try {
           existingToken = await storage.getObject(
@@ -338,7 +326,6 @@ ${history}`;
             });
           }
         } catch (error) {
-          // If there's an error finding the token, it likely doesn't exist, which is what we want
           if (
             !(error instanceof Error && error.message.includes("not found"))
           ) {
@@ -350,11 +337,9 @@ ${history}`;
           }
         }
 
-        // Find the agent with token launching capability
         let tokenLaunchingAgentId: string | undefined;
         let tokenLaunchingAgent: Agent | undefined;
 
-        // Check each agent in the backroom
         for (const agentId of backroom.agents) {
           const agent = await storage.getObject<Agent>(
             `agents/${agentId}.json`,
@@ -374,10 +359,8 @@ ${history}`;
           });
         }
 
-        // Get the creator of the token launching agent
         const creatorPublicKey = tokenLaunchingAgent.creator;
 
-        // Verify that the user's wallet matches the creator's wallet
         if (input.walletPublicKey !== creatorPublicKey) {
           throw new TRPCError({
             code: "UNAUTHORIZED",
@@ -386,10 +369,6 @@ ${history}`;
           });
         }
 
-        // We'll prepare transaction instructions to be signed by the user client-side
-        // We won't use our own private key for token launching anymore
-
-        // Get the complete conversation history
         let history;
         try {
           history = await storage.getObject<Backroom>(
@@ -413,7 +392,6 @@ ${history}`;
           });
         }
 
-        // Convert the conversation to a format suitable for analysis
         const conversationText = history.messages
           .map((msg) => {
             const agent = history.agents.find((a) => a === msg.agentId);
@@ -421,7 +399,6 @@ ${history}`;
           })
           .join("\n");
 
-        // Use OpenAI to analyze the conversation and generate token details
         const tokenResponse = await fetch(
           "https://api.openai.com/v1/chat/completions",
           {
@@ -484,24 +461,20 @@ ${history}`;
           });
         }
 
-        // Parse and validate token parameters
         let tokenParams: TokenParameters;
         try {
           let jsonContent = tokenData.choices[0].message.content.trim();
 
-          // Remove any markdown code block formatting if present
           if (jsonContent.startsWith("```")) {
             const startIndex = jsonContent.indexOf("\n") + 1;
             const endIndex = jsonContent.lastIndexOf("```");
             if (endIndex > startIndex) {
               jsonContent = jsonContent.substring(startIndex, endIndex).trim();
             } else {
-              // Just remove the first line if we can't find the closing tag
               jsonContent = jsonContent.substring(startIndex).trim();
             }
           }
 
-          // Remove any "json" language marker if present
           jsonContent = jsonContent.replace(/^json\s*/, "");
 
           const parsedContent = JSON.parse(jsonContent) as Record<
@@ -509,8 +482,6 @@ ${history}`;
             unknown
           >;
 
-          // Validate and enforce constraints before validation
-          // Truncate description if too long
           if (typeof parsedContent.description === "string") {
             parsedContent.description = parsedContent.description.substring(
               0,
@@ -518,14 +489,12 @@ ${history}`;
             );
           }
 
-          // Ensure symbol is valid
           if (typeof parsedContent.symbol === "string") {
             parsedContent.symbol = parsedContent.symbol
               .toUpperCase()
               .substring(0, 5);
           }
 
-          // Ensure name is not too long
           if (typeof parsedContent.name === "string") {
             parsedContent.name = parsedContent.name.substring(0, 32);
           }
@@ -540,34 +509,28 @@ ${history}`;
         }
 
         try {
-          // Prepare token parameters for client-side token launch
           const pumpFunOptions: PumpFunTokenOptions = {
             twitter: `@${tokenParams.symbol.toLowerCase()}token`,
             telegram: `t.me/${tokenParams.symbol.toLowerCase()}`,
             website: `https://makewithzync.com/tokens/${backroom.id}`,
-            initialLiquiditySOL: 0.01, // Reduced liquidity amount (was 0.1)
-            slippageBps: 10, // Default slippage
-            priorityFee: 0.0001, // Default priority fee
+            initialLiquiditySOL: 0.01,
+            slippageBps: 10,
+            priorityFee: 0.0001,
           };
 
-          // Generate a placeholder image URL based on token name
-          // Note: This URL is just a fallback; the client should use the user's image when available
           const imageUrl = `https://picsum.photos/seed/${tokenParams.name.replace(/\s+/g, "")}/300/300`;
 
-          // Instead of launching the token directly, we'll return the parameters
-          // for the client to handle the token launch with the user's wallet
           const launchParams = {
             tokenName: tokenParams.name,
             tokenSymbol: tokenParams.symbol,
             tokenDescription: tokenParams.description,
-            imageUrl, // This will be used as fallback if no user image is provided
+            imageUrl,
             pumpFunOptions,
             decimals: tokenParams.decimals,
             supply: tokenParams.supply,
             backroomId: backroom.id,
           };
 
-          // Store a pending token record
           const pendingTokenInfo = {
             name: tokenParams.name,
             symbol: tokenParams.symbol,
@@ -598,7 +561,6 @@ ${history}`;
         } catch (deployError) {
           console.error("Token deployment error:", deployError);
 
-          // Check if it's an "insufficient funds" error
           const errorMessage =
             deployError instanceof Error
               ? deployError.message
@@ -672,23 +634,18 @@ ${history}`;
           });
         }
 
-        // Get pending token info to add additional details
         let pendingTokenInfo: Record<string, unknown> | null = null;
         try {
           pendingTokenInfo = await storage.getObject(
             `backrooms/${backroom.id}/pending_token.json`,
           );
-        } catch {
-          // It's okay if there's no pending token
-        }
+        } catch {}
 
-        // Create final token record
         const completeTokenInfo = {
           ...input.tokenInfo,
           backroomId: backroom.id,
           topic: backroom.topic,
           launchedAt: new Date(),
-          // Add any additional fields from pending token if available
           ...(pendingTokenInfo
             ? {
                 decimals: pendingTokenInfo.decimals,
@@ -698,15 +655,12 @@ ${history}`;
             : {}),
         };
 
-        // Save the final token info
         await storage.saveObject(
           `backrooms/${backroom.id}/token.json`,
           completeTokenInfo,
         );
 
-        // Clean up the pending token info - instead of deleting, we'll mark it as processed
         try {
-          // Since we don't have deleteObject, we'll mark it as processed instead
           const processedToken = {
             ...pendingTokenInfo,
             status: "processed",

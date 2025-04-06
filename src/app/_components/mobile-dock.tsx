@@ -13,13 +13,11 @@ export function MobileDock() {
   const [isHovering, setIsHovering] = useState(false);
   const [isPressed, setIsPressed] = useState<DialogId | null>(null);
 
-  // Handle dialog opening
   const handleIconClick = (id: DialogId) => {
     selectIcon(id);
     openDialog(id);
   };
 
-  // Update active dialog based on open dialogs
   useEffect(() => {
     if (openDialogs.length > 0) {
       setActiveDialog(openDialogs[openDialogs.length - 1].id);
@@ -28,7 +26,6 @@ export function MobileDock() {
     }
   }, [openDialogs]);
 
-  // Close active dialog when clicking outside (only on mobile)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;

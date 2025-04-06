@@ -23,11 +23,9 @@ interface ErrorResponse {
 
 export async function POST(req: NextRequest) {
   try {
-    // Get the JSON body from the incoming request
     const body = (await req.json()) as TradeLocalBody;
 
     try {
-      // Forward the request to pumpportal.fun API
       const response = await fetch("https://pumpportal.fun/api/trade-local", {
         method: "POST",
         headers: {
@@ -42,13 +40,11 @@ export async function POST(req: NextRequest) {
           `Pumpportal.fun API error: ${response.status} ${response.statusText}`,
         );
 
-        // Try to get more details about the error
         try {
           const errorText = await response.text();
           console.error("Error response:", errorText);
 
           try {
-            // Try to parse as JSON
             const errorJson = JSON.parse(errorText) as Record<string, unknown>;
             return NextResponse.json(
               {
@@ -58,7 +54,6 @@ export async function POST(req: NextRequest) {
               { status: response.status },
             );
           } catch {
-            // If not JSON, return as text
             return NextResponse.json(
               {
                 error: errorText,
@@ -68,7 +63,6 @@ export async function POST(req: NextRequest) {
             );
           }
         } catch {
-          // If we can't even get the error text
           return NextResponse.json(
             {
               error: `Pump.fun API error: ${response.status} ${response.statusText}`,
@@ -78,7 +72,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // Return the binary response as-is (important for transaction data)
       const arrayBuffer = await response.arrayBuffer();
       return new NextResponse(arrayBuffer, {
         status: 200,

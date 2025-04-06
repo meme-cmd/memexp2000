@@ -16,6 +16,7 @@ export const env = createEnv({
     CLOUDFLARE_BUCKET_NAME: z.string(),
     TOGETHER_API: z.string(),
     OPENAI_API_KEY: z.string(),
+    MAINNET_RPC: z.string(),
   },
 
   /**
@@ -39,6 +40,7 @@ export const env = createEnv({
     CLOUDFLARE_BUCKET_NAME: process.env.CLOUDFLARE_BUCKET_NAME,
     TOGETHER_API: process.env.TOGETHER_API,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    MAINNET_RPC: process.env.MAINNET_RPC,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**

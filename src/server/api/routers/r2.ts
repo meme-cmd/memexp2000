@@ -108,7 +108,6 @@ class StorageService {
             throw new Error(`Object not found: ${key}`);
           }
 
-          // Parse JSON with explicit validation
           let parsed: unknown;
           try {
             parsed = JSON.parse(data);
@@ -122,7 +121,6 @@ class StorageService {
 
           return parsed as T;
         } catch (err) {
-          // Check specifically for NoSuchKey
           if (
             err &&
             typeof err === "object" &&
@@ -133,7 +131,6 @@ class StorageService {
             throw new Error(`Object not found: ${key}`);
           }
 
-          // Capture internal errors for retry
           if (
             err &&
             typeof err === "object" &&
@@ -145,7 +142,6 @@ class StorageService {
               `R2 internal error for ${key}, attempt ${attempt + 1}/${retryCount}`,
             );
 
-            // Wait before retry
             if (attempt < retryCount - 1) {
               await new Promise((resolve) =>
                 setTimeout(resolve, retryDelay * (attempt + 1)),
@@ -159,7 +155,6 @@ class StorageService {
       } catch (error) {
         lastError = error;
 
-        // If this is not our last attempt, and it's an error we want to retry on
         if (
           attempt < retryCount - 1 &&
           error &&
@@ -179,14 +174,12 @@ class StorageService {
           error,
         );
 
-        // On last attempt, throw the error
         if (attempt === retryCount - 1) {
           throw error;
         }
       }
     }
 
-    // This should never be reached, but just in case
     throw lastError;
   }
 
@@ -392,7 +385,6 @@ export const r2Router = createTRPCRouter({
           `backrooms/${input.id}.json`,
         );
         return BackroomSchema.parse(backroom);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         throw new TRPCError({
           code: "NOT_FOUND",
@@ -499,7 +491,6 @@ export const r2Router = createTRPCRouter({
           try {
             if (!obj.key) return null;
 
-            // Attempt to retrieve the agent data with retries
             try {
               const data = await storage.getObject<Agent>(obj.key);
 
@@ -513,7 +504,6 @@ export const r2Router = createTRPCRouter({
                 createdAt = obj.lastModified ?? new Date();
               }
 
-              // Attempt to validate the agent data
               try {
                 const parsedAgent = AgentSchema.parse({
                   ...data,
@@ -528,7 +518,6 @@ export const r2Router = createTRPCRouter({
                 return null;
               }
             } catch (retrievalError) {
-              // If we can't retrieve the agent data, log and return null
               console.error(
                 `Failed to retrieve agent ${obj.key}:`,
                 retrievalError,
@@ -541,10 +530,8 @@ export const r2Router = createTRPCRouter({
           }
         });
 
-        // Use Promise.allSettled to ensure all promises complete even if some fail
         const settledResults = await Promise.allSettled(agentPromises);
 
-        // Extract the successfully fulfilled promises and filter out null values
         const agents = settledResults
           .filter(
             (result): result is PromiseFulfilledResult<Agent | null> =>
@@ -553,7 +540,6 @@ export const r2Router = createTRPCRouter({
           .map((result) => result.value)
           .filter((agent): agent is Agent => agent !== null);
 
-        // Filter agents based on visibility and creator
         const filteredAgents = agents.filter(
           (agent) =>
             agent.visibility === "public" ||

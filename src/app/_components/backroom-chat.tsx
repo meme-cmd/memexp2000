@@ -7,8 +7,8 @@ import { useUser } from "@/hooks/use-user";
 import { Connection, VersionedTransaction, Keypair } from "@solana/web3.js";
 import { agentToast } from "./agent-toast";
 import Image from "next/image";
+import { env } from "@/env";
 
-// Add type definitions for the token launch process
 type PumpFunOptions = {
   twitter?: string;
   telegram?: string;
@@ -30,7 +30,6 @@ type LaunchParams = {
   imageFile?: File;
 };
 
-// Define a type for token launch result
 type TokenLaunchResult = {
   mint: string;
   name: string;
@@ -42,7 +41,6 @@ type TokenLaunchResult = {
   };
 };
 
-// Define type for metadata response
 interface MetadataResponse {
   metadataUri: string;
   metadata?: {
@@ -60,7 +58,7 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
     { id: backroomId },
     {
       enabled: !!backroomId,
-      refetchInterval: 3000, // Poll every 3 seconds to show updates in real time
+      refetchInterval: 3000,
     },
   );
 
@@ -87,27 +85,19 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
     },
   );
 
-  // Comment out unused state variables
-  // const [backroomMessages, setBackroomMessages] = useState<BackroomMessage[]>(
-  //   [],
-  // );
-  // const [isGenerating, setIsGenerating] = useState(false);
   const [isTokenLaunching, setIsTokenLaunching] = useState(false);
   const [isTokenLaunched, setIsTokenLaunched] = useState(false);
   const [tokenLaunchResult, setTokenLaunchResult] =
     useState<TokenLaunchResult | null>(null);
   const [tokenLaunchError, setTokenLaunchError] = useState<string | null>(null);
   const [tokenImage, setTokenImage] = useState<File | null>(null);
-  // const [launchParams, setLaunchParams] = useState<LaunchParams | null>(null);
 
   const { mutate: launchTokenMutate, isPending: isLaunchingTokenBackend } =
     api.backroom.launchToken.useMutation({
       onSuccess: async (data) => {
         setTokenLaunchError(null);
-        // setLaunchParams(data.launchParams);
 
         try {
-          // Now start the client-side token launch with the user's wallet
           const result = await handleClientTokenLaunch({
             ...data.launchParams,
             imageFile: tokenImage ?? undefined,
@@ -127,7 +117,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
       },
     });
 
-  // Function to handle client-side token launch
   const handleClientTokenLaunch = async (params: LaunchParams) => {
     if (!publicKey || !window.solana) {
       agentToast.walletRequired("Connect wallet to launch tokens");
@@ -136,31 +125,21 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
 
     setIsTokenLaunching(true);
     try {
-      // Step 0: Setup the mint keypair for the token
       const mintKeypair = Keypair.generate();
 
-      // Create a connection to the Solana network
-      const connection = new Connection(
-        "https://mainnet.helius-rpc.com/?api-key=a018a555-b435-4629-a61b-6e001431ca58",
-        {
-          commitment: "confirmed",
-        },
-      );
+      const connection = new Connection(env.MAINNET_RPC, {
+        commitment: "confirmed",
+      });
 
-      // Step 1: Upload metadata to IPFS
       const formData = new FormData();
       formData.append("name", params.tokenName);
       formData.append("symbol", params.tokenSymbol);
       formData.append("description", params.tokenDescription);
 
-      // Add user image if available
       if (params.imageFile) {
-        // Use the correct field name 'file' for the pump.fun API
         formData.append("file", params.imageFile);
       } else {
-        // If no user image, use a reliable test image with proper format
         try {
-          // Use a reliable source for test images that works well with pump.fun
           const placeholderUrl =
             "https://api.dicebear.com/7.x/identicon/png?seed=" +
             params.tokenSymbol;
@@ -182,7 +161,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
         }
       }
 
-      // Add optional social links if provided
       if (params.pumpFunOptions.twitter) {
         formData.append("twitter", params.pumpFunOptions.twitter);
       }
@@ -194,7 +172,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
       }
       formData.append("showName", "true");
 
-      // Upload metadata to IPFS
       const metadataResponse = await fetch("/api/pumpfun-proxy", {
         method: "POST",
         body: formData,
@@ -216,7 +193,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
       const metadataResponseJSON =
         (await metadataResponse.json()) as MetadataResponse;
 
-      // Step 2: Get the local transaction for token creation
       const response = await fetch(`/api/trade-local-proxy`, {
         method: "POST",
         headers: {
@@ -243,23 +219,18 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
         throw new Error(`Failed to get transaction: ${response.statusText}`);
       }
 
-      // Step 3: Process and sign the transaction
       const transactionData = await response.arrayBuffer();
       const tx = VersionedTransaction.deserialize(
         new Uint8Array(new Uint8Array(transactionData)),
       );
 
-      // Sign with the mint keypair
       tx.sign([mintKeypair]);
 
-      // Have user sign the transaction
-      // Use signAllTransactions to handle VersionedTransaction
       let signedTx;
       try {
         // @ts-expect-error - Type safety for browser wallet is difficult to enforce since Solana wallet adapter types may not match runtime behavior
         signedTx = await window.solana.signTransaction(tx);
       } catch (error) {
-        // Handle user rejection of signature request
         if (
           error instanceof Error &&
           (error.message.includes("rejected") ||
@@ -269,7 +240,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
         } else {
           console.error("Token launch error:", error);
 
-          // Provide more specific error message based on what went wrong
           let errorMessage = "Failed to launch token";
           if (error instanceof Error) {
             if (error.message.includes("Failed to upload metadata")) {
@@ -287,12 +257,10 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
         return null;
       }
 
-      // Step 4: Send the signed transaction
       const signature = await connection.sendRawTransaction(
         signedTx.serialize(),
       );
 
-      // Wait for confirmation
       const confirmation = await connection.confirmTransaction(signature);
 
       if (confirmation.value.err) {
@@ -301,7 +269,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
         );
       }
 
-      // Create the result object
       const result: TokenLaunchResult = {
         mint: mintKeypair.publicKey.toBase58(),
         name: params.tokenName,
@@ -316,7 +283,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
       agentToast.success("Token launched successfully!");
       return result;
     } catch (error) {
-      // Don't log error to console
       if (
         error instanceof Error &&
         (error.message.includes("rejected") ||
@@ -326,7 +292,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
       } else {
         console.error("Token launch error:", error);
 
-        // Provide more specific error message based on what went wrong
         let errorMessage = "Failed to launch token";
         if (error instanceof Error) {
           if (error.message.includes("Failed to upload metadata")) {
@@ -346,24 +311,18 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
     }
   };
 
-  // Function to check if the backroom has an agent with token launching capability
-  // Wrap in useCallback to avoid dependency array issues in useEffect
   const hasTokenLaunchAgent = useCallback(() => {
     if (!backroomQuery.data || !agentsQuery.data?.agents) return false;
 
-    // Check if any agent in the backroom has token launching capability
     return backroomQuery.data.agents.some((agentId) => {
       const agent = agentsQuery.data.agents.find((a) => a.id === agentId);
       return agent?.canLaunchToken === true;
     });
   }, [backroomQuery.data, agentsQuery.data?.agents]);
 
-  // State to track if we've started the conversation
   const [conversationStarted, setConversationStarted] = useState(false);
-  // State to control auto-scrolling (disabled by default)
   const [autoScroll] = useState(false);
 
-  // Start conversation when backroom is loaded with 0 messages
   useEffect(() => {
     if (
       backroomQuery.data &&
@@ -382,7 +341,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
     generateNext,
   ]);
 
-  // Auto-generate next message when needed
   useEffect(() => {
     if (
       backroomQuery.data &&
@@ -391,7 +349,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
       backroomQuery.data.status === "active" &&
       !isTyping
     ) {
-      // Add delay before generating the next message
       const timer = setTimeout(() => {
         generateNext({ backroomId });
       }, 1000);
@@ -400,7 +357,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
     }
   }, [backroomId, backroomQuery.data, isTyping, generateNext]);
 
-  // Auto-launch token when conversation completes
   useEffect(() => {
     if (
       backroomQuery.data &&
@@ -411,7 +367,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
       !isTokenLaunching &&
       publicKey
     ) {
-      // Add a small delay to ensure the UI shows all messages first
       const timer = setTimeout(() => {
         launchTokenMutate({ backroomId, walletPublicKey: publicKey });
       }, 1500);
@@ -429,7 +384,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
     hasTokenLaunchAgent,
   ]);
 
-  // Scroll to the bottom when messages change - disabled by default
   useEffect(() => {
     if (
       autoScroll &&
@@ -470,7 +424,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
     );
   }
 
-  // Error handling and rate limiting logic
   const currentTypingAgent =
     backroomQuery.data.agents[
       backroomQuery.data.messages.length % backroomQuery.data.agents.length
@@ -549,7 +502,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
               );
             })}
 
-            {/* Token launch result message */}
             {tokenLaunchResult && (
               <div className="mb-3 flex flex-row gap-2">
                 <div
@@ -608,7 +560,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
               </div>
             )}
 
-            {/* Token launch error message */}
             {tokenLaunchError && (
               <div className="mb-3 flex flex-row gap-2">
                 <div
@@ -650,7 +601,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
               </div>
             )}
 
-            {/* Typing indicator */}
             {(isTyping ||
               isPending ||
               (backroomQuery.data?.status === "completed" &&
@@ -727,7 +677,6 @@ export function BackroomChat({ backroomId }: { backroomId: string }) {
               </div>
             )}
 
-            {/* Token launch ready message */}
             {backroomQuery.data?.status === "completed" &&
             hasTokenLaunchAgent() &&
             !isTokenLaunched &&

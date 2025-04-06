@@ -2,7 +2,6 @@ import type { NextResponse as NextResponseType } from "next/server";
 import { NextResponse } from "next/server";
 import { storage } from "@/server/api/routers/r2";
 
-// Define types to prevent linting errors
 interface Backroom {
   id: string;
   topic: string;
@@ -43,7 +42,6 @@ export async function POST(request: Request): Promise<NextResponseType> {
       );
     }
 
-    // Get the backroom data
     const backroom = await storage.getObject<Backroom>(
       `backrooms/${backroomId}.json`,
     );
@@ -55,23 +53,18 @@ export async function POST(request: Request): Promise<NextResponseType> {
       );
     }
 
-    // Get pending token info to add additional details
     let pendingTokenInfo: PendingToken | null = null;
     try {
       pendingTokenInfo = await storage.getObject<PendingToken>(
         `backrooms/${backroomId}/pending_token.json`,
       );
-    } catch {
-      // It's okay if there's no pending token
-    }
+    } catch {}
 
-    // Create final token record
     const completeTokenInfo = {
       ...tokenInfo,
       backroomId: backroomId,
       topic: backroom.topic,
       launchedAt: new Date(),
-      // Add any additional fields from pending token if available
       ...(pendingTokenInfo && {
         decimals: pendingTokenInfo.decimals,
         supply: pendingTokenInfo.supply,
@@ -79,13 +72,11 @@ export async function POST(request: Request): Promise<NextResponseType> {
       }),
     };
 
-    // Save the final token info
     await storage.saveObject(
       `backrooms/${backroomId}/token.json`,
       completeTokenInfo,
     );
 
-    // Mark pending token as processed
     if (pendingTokenInfo) {
       const processedToken = {
         ...pendingTokenInfo,

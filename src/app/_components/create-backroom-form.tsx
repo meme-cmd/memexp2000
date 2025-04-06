@@ -14,8 +14,8 @@ import {
   SystemProgram,
 } from "@solana/web3.js";
 import type { Agent } from "@/types/agent";
+import { env } from "@/env";
 
-// Add type for injected wallet
 declare global {
   interface Window {
     solana?: {
@@ -34,7 +34,6 @@ export function CreateBackroomForm() {
     string | null
   >(null);
 
-  // Add a new state to track agents that have been paid for
   const [paidForAgents, setPaidForAgents] = useState<Record<string, boolean>>(
     {},
   );
@@ -58,7 +57,6 @@ export function CreateBackroomForm() {
     },
   );
 
-  // Separate query for getting all available agents (including public ones)
   const createBackroom = api.r2.createBackroom.useMutation({
     onSuccess: (result) => {
       router.refresh();
@@ -72,7 +70,6 @@ export function CreateBackroomForm() {
     },
   });
 
-  // Update the useEffect to check payment status for paid agents
   useEffect(() => {
     if (agentsQuery.data?.agents && publicKey) {
       const paidAgentsMap: Record<string, Agent> = {};
@@ -92,16 +89,13 @@ export function CreateBackroomForm() {
     }
   }, [agentsQuery.data?.agents, publicKey]);
 
-  // When an agent is successfully paid for, add it to the paidForAgents
   const verifyPayment = api.payment.verifyPayment.useMutation({
     onSuccess: () => {
       agentToast.success("Payment verified successfully!");
 
-      // Add the agent to the selected agents
       if (currentPaymentAgentId) {
         setSelectedAgents((prev) => [...prev, currentPaymentAgentId]);
 
-        // Mark this agent as paid for
         setPaidForAgents((prev) => ({
           ...prev,
           [currentPaymentAgentId]: true,
@@ -127,15 +121,10 @@ export function CreateBackroomForm() {
       setIsProcessingPayment(true);
       setCurrentPaymentAgentId(agentId);
 
-      // Create a Solana connection
-      const connection = new Connection(
-        "https://mainnet.helius-rpc.com/?api-key=a018a555-b435-4629-a61b-6e001431ca58",
-        {
-          commitment: "confirmed",
-        },
-      );
+      const connection = new Connection(env.MAINNET_RPC, {
+        commitment: "confirmed",
+      });
 
-      // Setup transaction
       const creatorPublicKey = new PublicKey(paidAgents[agentId].creator);
       const senderPublicKey = new PublicKey(publicKey);
       const lamportsToSend = Math.round(
@@ -150,13 +139,11 @@ export function CreateBackroomForm() {
         }),
       );
 
-      // Set recent blockhash and fee payer
       transaction.recentBlockhash = (
         await connection.getLatestBlockhash()
       ).blockhash;
       transaction.feePayer = senderPublicKey;
 
-      // Request wallet signature
       if (!window.solana) {
         setIsProcessingPayment(false);
         setCurrentPaymentAgentId(null);
@@ -167,30 +154,25 @@ export function CreateBackroomForm() {
       try {
         signedTransaction = await window.solana.signTransaction(transaction);
       } catch (error) {
-        // Clean up state
         setIsProcessingPayment(false);
         setCurrentPaymentAgentId(null);
 
-        // Handle transaction rejection without logging to console
         if (
           error instanceof Error &&
           (error.message.includes("rejected") ||
             error.message.includes("User rejected"))
         ) {
           agentToast.info("Transaction was cancelled by user");
-          return; // Exit without throwing further
+          return;
         }
 
-        // For other errors, throw to be caught by outer catch
         throw error;
       }
 
-      // Send transaction
       const signature = await connection.sendRawTransaction(
         signedTransaction.serialize(),
       );
 
-      // Verify transaction on the server
       await verifyPayment.mutateAsync({
         signature,
         payerPublicKey: publicKey,
@@ -198,11 +180,9 @@ export function CreateBackroomForm() {
         agentId,
       });
     } catch (error) {
-      // Clean up state
       setIsProcessingPayment(false);
       setCurrentPaymentAgentId(null);
 
-      // Only show toast notification, avoid console.error
       if (
         error instanceof Error &&
         (error.message.includes("rejected") ||
@@ -238,7 +218,6 @@ export function CreateBackroomForm() {
         creator: publicKey,
       });
     } catch (error) {
-      // Remove console.error and just show toast
       agentToast.error(
         "Failed to create backroom: " +
           (error instanceof Error ? error.message : String(error)),
@@ -269,9 +248,7 @@ export function CreateBackroomForm() {
         return;
       }
 
-      // Check if the agent can launch tokens
       if (agentToAdd?.canLaunchToken) {
-        // Check if there's already an agent with token launching capability
         const hasTokenLaunchingAgent = selectedAgents.some((id) => {
           const agent = agentsQuery.data?.agents.find((a) => a.id === id);
           return agent?.canLaunchToken;
@@ -285,30 +262,22 @@ export function CreateBackroomForm() {
         }
       }
 
-      // Check if this is a paid agent that we need to pay for
       const isPaidAgent = paidAgents[agentId] !== undefined;
       const alreadyPaidFor = paidForAgents[agentId];
 
-      // If it's a paid agent and not already paid for
       if (
         isPaidAgent &&
         !alreadyPaidFor &&
         paidAgents[agentId].creator !== publicKey
       ) {
-        // Process payment first
         await handlePayment(agentId);
-        // After payment completes, the verifyPayment.onSuccess callback will be called
-        // and add the agent to selectedAgents
       } else {
-        // For free agents, if user is the creator, or already paid, add immediately
         setSelectedAgents((prev) => [...prev, agentId]);
       }
     } catch (error) {
-      // Don't log error to console
       setIsProcessingPayment(false);
       setCurrentPaymentAgentId(null);
 
-      // Check for wallet rejection errors specifically
       if (
         error instanceof Error &&
         (error.message.includes("rejected") ||
@@ -316,7 +285,6 @@ export function CreateBackroomForm() {
       ) {
         agentToast.info("Transaction was cancelled by user");
       } else {
-        // Handle other errors with a simple message
         agentToast.error("Failed to select agent");
       }
     }
@@ -404,7 +372,7 @@ export function CreateBackroomForm() {
                   } catch (_error) {
                     /* eslint-disable-line @typescript-eslint/no-unused-vars */
                     // Errors are already handled in handleAgentSelect
-                    // Don't log errors to console
+                    // No need to log errors to console
                   }
                 }}
                 className={`cursor-pointer rounded border p-2 ${
