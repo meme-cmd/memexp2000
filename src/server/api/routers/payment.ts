@@ -12,7 +12,7 @@ import {
 import { env } from "@/env";
 
 const MINT_ADDRESS = "6sLPWn293q3hGMF9mhQAkxnqy2Kz4sQZVW2jQ2Nypump";
-const RECIPIENT_ADDRESS = "5HypJG3eMU9dmMzSKCaKunsjpMT6eXuiUGnukmc9ouHz";
+const RECIPIENT_ADDRESS = "7fDgaeRcsY8jdrECFc5qAJkwpuY8qqGbx2RYiVKomyMh";
 const REQUIRED_PAYMENT_AMOUNT = 10000;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;

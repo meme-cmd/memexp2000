@@ -31,7 +31,7 @@ declare global {
 }
 
 const PAYMENT_AMOUNT = 0.1;
-const RECIPIENT_ADDRESS = "5HypJG3eMU9dmMzSKCaKunsjpMT6eXuiUGnukmc9ouHz";
+const RECIPIENT_ADDRESS = "7fDgaeRcsY8jdrECFc5qAJkwpuY8qqGbx2RYiVKomyMh";
 
 export function CreateAgentForm({ onSuccess }: CreateAgentFormProps) {
   const router = useRouter();
