@@ -6,6 +6,15 @@ import type { DialogId } from "@/store/dialog-store";
 import { cn } from "@/lib/utils";
 import Image from 'next/image';
 import Link from 'next/link';
+import { useUser } from "@/hooks/use-user";
+import { ConnectWalletButton } from './connect-wallet-button';
+import dynamic from 'next/dynamic';
+
+// Dynamically import the wallet button to prevent SSR issues
+const WalletButton = dynamic(
+  () => import('./connect-wallet-button').then(mod => mod.ConnectWalletButton),
+  { ssr: false }
+);
 
 interface Icon {
   id: string;
@@ -16,6 +25,14 @@ interface Icon {
 
 export function XPDesktop() {
   const { openDialog, selectIcon, selectedIcon } = useDialogStore();
+  const { publicKey } = useUser();
+  
+  // Format wallet address as "abcd...1234"
+  const shortenAddress = (address: string | null) => {
+    if (!address) return "Connect Wallet";
+    return `${address.slice(0, 4)}...${address.slice(-4)}`;
+  };
+  
   const [icons, setIcons] = useState<Icon[]>([
     { 
       id: "AGENTS", 
@@ -26,16 +43,39 @@ export function XPDesktop() {
     { 
       id: "BACKROOMS", 
       title: "Backrooms", 
-      icon: "folder",
+      icon: "backrooms",
       position: { x: 20, y: 100 }
     },
     { 
       id: "USER", 
-      title: "User Profile", 
-      icon: "user",
+      title: "My Profile", 
+      icon: "user-profile",
       position: { x: 20, y: 180 }
+    },
+    {
+      id: "WALLET", 
+      title: shortenAddress(publicKey), 
+      icon: "wallet",
+      position: { x: 20, y: 260 }
+    },
+    {
+      id: "PUBLIC_CHAT", 
+      title: "Public Chat", 
+      icon: "chat",
+      position: { x: 20, y: 340 }
     }
   ]);
+  
+  // Update wallet icon name when publicKey changes
+  useEffect(() => {
+    setIcons(prev => 
+      prev.map(icon => 
+        icon.id === "WALLET" 
+          ? { ...icon, title: shortenAddress(publicKey) } 
+          : icon
+      )
+    );
+  }, [publicKey]);
   
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -113,6 +153,17 @@ export function XPDesktop() {
     });
   };
 
+  // Handle wallet icon click to connect wallet
+  const handleWalletClick = () => {
+    // For simplicity, we'll just trigger the dialog-store's button action
+    useDialogStore.getState().handleButtonClick("connect-wallet");
+
+    // Use the existing pattern of opening a dialog
+    if (publicKey) {
+      openDialog("USER" as DialogId);
+    }
+  };
+  
   // Function to render the appropriate icon based on type
   const renderIcon = (iconType: string) => {
     // These classes would typically be provided by XP.css
@@ -120,14 +171,33 @@ export function XPDesktop() {
     
     switch(iconType) {
       case "computer":
-        iconClass = "my-computer-icon";
-        break;
-      case "folder":
-        iconClass = "folder-icon";
-        break;
-      case "user":
-        iconClass = "user-icon";
-        break;
+        return <img src="/0agents.png" alt="Agents" width={32} height={32} style={{ objectFit: 'contain' }} />;
+      case "backrooms":
+        return <img src="/49.png" alt="Backrooms" width={32} height={32} style={{ objectFit: 'contain' }} />;
+      case "user-profile":
+        return <img 
+          src="/01.png" 
+          alt="My Profile" 
+          width={32} 
+          height={32} 
+          style={{ objectFit: 'contain' }}
+        />;
+      case "wallet":
+        return <img 
+          src="/0wallet.png" 
+          alt="Connect Wallet" 
+          width={32} 
+          height={32} 
+          style={{ objectFit: 'contain' }}
+        />;
+      case "chat":
+        return <img 
+          src="/151.png" 
+          alt="Public Chat" 
+          width={32} 
+          height={32} 
+          style={{ objectFit: 'contain' }}
+        />;
       default:
         iconClass = "file-icon";
     }
@@ -153,6 +223,14 @@ export function XPDesktop() {
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
     >
+      {/* Custom style for icons */}
+      <style jsx global>{`
+        .icon-img {
+          object-fit: contain;
+          background-color: transparent;
+        }
+      `}</style>
+      
       {/* Desktop Icons */}
       {icons.map((icon) => (
         <div
@@ -167,14 +245,26 @@ export function XPDesktop() {
             width: '80px',
             textAlign: 'center',
             padding: '5px',
-            borderRadius: '3px'
+            borderRadius: '3px',
+            backgroundColor: selectedIcon === icon.id ? 'rgba(49, 106, 197, 0.3)' : 'transparent'
           }}
           onMouseDown={(e) => onMouseDown(e, icon.id)}
-          onClick={(e) => e.stopPropagation()}
-          onDoubleClick={() => openDialog(icon.id as DialogId)}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (icon.id === "WALLET") {
+              handleWalletClick();
+            }
+          }}
+          onDoubleClick={() => {
+            if (icon.id === "WALLET") {
+              handleWalletClick();
+            } else {
+              openDialog(icon.id as DialogId);
+            }
+          }}
         >
           {/* Use appropriate HTML structure for XP.css icons */}
-          <div className="icon-image" style={{height: '48px', width: '48px', margin: '0 auto'}}>
+          <div className="icon-image" style={{height: '48px', width: '48px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
             {renderIcon(icon.icon)}
           </div>
           <span style={{
@@ -182,8 +272,9 @@ export function XPDesktop() {
             fontSize: '12px',
             fontWeight: 'bold',
             color: 'white',
-            textShadow: '1px 1px #000',
-            wordWrap: 'break-word'
+            textShadow: '1px 1px 2px #000',
+            wordWrap: 'break-word',
+            display: 'block'
           }}>
             {icon.title}
           </span>
@@ -261,16 +352,20 @@ export function XPDesktop() {
             <div className="social-icon" title="PumpFun" style={{ 
               width: '22px', 
               height: '22px',
-              backgroundColor: '#FF7E1E',
+              backgroundColor: 'transparent',
               borderRadius: '3px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 'bold',
-              fontSize: '14px',
-              color: 'white'
+              overflow: 'hidden'
             }}>
-              P
+              <img 
+                src="/pflogo.png" 
+                alt="PumpFun" 
+                width={22}
+                height={22}
+                style={{ objectFit: 'contain' }}
+              />
             </div>
           </Link>
           
@@ -279,16 +374,20 @@ export function XPDesktop() {
             <div className="social-icon" title="DexScreener" style={{ 
               width: '22px', 
               height: '22px',
-              backgroundColor: '#17DEC6',
+              backgroundColor: 'transparent',
               borderRadius: '3px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontWeight: 'bold',
-              fontSize: '14px',
-              color: 'white'
+              overflow: 'hidden'
             }}>
-              D
+              <img 
+                src="/dslogo.png" 
+                alt="DexScreener" 
+                width={22}
+                height={22}
+                style={{ objectFit: 'contain' }}
+              />
             </div>
           </Link>
         </div>
@@ -297,57 +396,6 @@ export function XPDesktop() {
         <div style={{ marginRight: '5px', color: 'white', fontSize: '12px' }}>
           {formatTime(currentTime)}
         </div>
-      </div>
-      
-      {/* Desktop Notification */}
-      <div 
-        className="notification"
-        style={{
-          position: 'absolute',
-          bottom: '40px',
-          right: '10px',
-          backgroundColor: 'white',
-          border: '1px solid #a0a0a0',
-          borderRadius: '3px',
-          boxShadow: '2px 2px 10px rgba(0,0,0,0.2)',
-          padding: '10px',
-          width: '280px',
-          display: 'flex',
-          zIndex: 990
-        }}
-      >
-        <div style={{ marginRight: '10px', color: '#ffcc00' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
-          </svg>
-        </div>
-        <div>
-          <h4 style={{ margin: '0 0 4px 0', fontSize: '13px', fontWeight: 'bold' }}>
-            There are unused icons on your desktop
-          </h4>
-          <p style={{ margin: 0, fontSize: '12px', color: '#444' }}>
-            The desktop cleanup wizard can help you clean up your desktop. Click this balloon to start the wizard.
-          </p>
-        </div>
-        <button 
-          style={{ 
-            position: 'absolute',
-            top: '2px',
-            right: '2px',
-            width: '16px',
-            height: '16px',
-            backgroundColor: '#e0e0e0',
-            border: '1px solid #a0a0a0',
-            borderRadius: '2px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '10px',
-            cursor: 'pointer'
-          }}
-        >
-          ×
-        </button>
       </div>
     </div>
   );

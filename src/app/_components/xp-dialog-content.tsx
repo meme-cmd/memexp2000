@@ -9,6 +9,7 @@ import { CreateAgentForm } from "./create-agent-form";
 import { CreateBackroomForm } from "./create-backroom-form";
 import { ChatInterface } from "./chat-interface";
 import { BackroomChat } from "./backroom-chat";
+import { PublicChat } from "./public-chat";
 import { useDialogStore } from "@/store/dialog-store";
 import type { DialogState, DialogId } from "@/store/dialog-store";
 import { useNavigationStore } from "@/store/navigation-store";
@@ -19,6 +20,7 @@ import { api } from "@/trpc/react";
 import { agentToast } from "./agent-toast";
 import type { Agent } from "@/types/agent";
 import type { Backroom } from "@/types/backroom";
+import { WalletRequiredMessage } from "./wallet-required-message";
 
 function useWindowSize() {
   const [size, setSize] = useState({
@@ -208,76 +210,88 @@ export function XPDialogContent() {
       return <CreateBackroomForm />;
     }
 
+    if (currentView.id === "PUBLIC_CHAT") {
+      return <PublicChat />;
+    }
+
     if (currentView.id === "USER") {
+      if (!publicKey) {
+        return <WalletRequiredMessage featureName="your profile" />;
+      }
       return <UserProfileForm />;
     }
 
     if (currentView.id === "BACKROOMS") {
       return (
         <div className="space-y-4 text-black">
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => handleCreateClick(dialog.id, "backroom")}
-              className="button"
-            >
-              Create Backroom
-            </button>
-            <ConnectWalletButton />
-          </div>
-          {backroomsQuery.isLoading && (
-            <div className="text-center text-sm text-gray-600">
-              Loading backrooms...
-            </div>
-          )}
-
-          {backroomsQuery.error && (
-            <div className="text-center text-sm text-red-500">
-              Error loading backrooms: {backroomsQuery.error.message}
-            </div>
-          )}
-
-          {backroomsQuery.data && (
-            <div className="mobile-grid grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-              {backroomsQuery.data.backrooms.map((backroom) => (
-                <div
-                  key={backroom.id}
-                  onClick={() => handleBackroomClick(backroom, dialog.id)}
-                  className="cursor-pointer rounded bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-[1.02]"
+          {!publicKey ? (
+            <WalletRequiredMessage featureName="Backrooms" />
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => handleCreateClick(dialog.id, "backroom")}
+                  className="button"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-start font-medium text-black">
-                        {backroom.name}
-                      </h3>
-                      {backroom.visibility === "private" && (
-                        <span className="rounded bg-gray-100 px-1 text-xs text-gray-600">
-                          Private
-                        </span>
-                      )}
-                    </div>
-                    <span
-                      className={`h-2 w-2 rounded-full ${
-                        backroom.status === "active"
-                          ? "bg-green-500 brightness-200"
-                          : "bg-gray-400"
-                      }`}
-                    />
-                  </div>
-                  <div className="text-start text-xs font-thin text-gray-500">
-                    {backroom.topic}
-                  </div>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    <span className="rounded bg-purple-100 px-1 text-xs text-purple-800">
-                      {backroom.messages.length}/{backroom.messageLimit}{" "}
-                      messages
-                    </span>
-                  </div>
-                  <div className="mt-1 text-xs text-gray-500">
-                    {formatTimestamp(backroom.createdAt)}
-                  </div>
+                  Create Backroom
+                </button>
+              </div>
+              {backroomsQuery.isLoading && (
+                <div className="text-center text-sm text-gray-600">
+                  Loading backrooms...
                 </div>
-              ))}
-            </div>
+              )}
+
+              {backroomsQuery.error && (
+                <div className="text-center text-sm text-red-500">
+                  Error loading backrooms: {backroomsQuery.error.message}
+                </div>
+              )}
+
+              {backroomsQuery.data && (
+                <div className="mobile-grid grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  {backroomsQuery.data.backrooms.map((backroom) => (
+                    <div
+                      key={backroom.id}
+                      onClick={() => handleBackroomClick(backroom, dialog.id)}
+                      className="cursor-pointer rounded bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-[1.02]"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-start font-medium text-black">
+                            {backroom.name}
+                          </h3>
+                          {backroom.visibility === "private" && (
+                            <span className="rounded bg-gray-100 px-1 text-xs text-gray-600">
+                              Private
+                            </span>
+                          )}
+                        </div>
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            backroom.status === "active"
+                              ? "bg-green-500 brightness-200"
+                              : "bg-gray-400"
+                          }`}
+                        />
+                      </div>
+                      <div className="text-start text-xs font-thin text-gray-500">
+                        {backroom.topic}
+                      </div>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        <span className="rounded bg-purple-100 px-1 text-xs text-purple-800">
+                          {backroom.messages.length}/{backroom.messageLimit}{" "}
+                          messages
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        {formatTimestamp(backroom.createdAt)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
       );
@@ -285,81 +299,86 @@ export function XPDialogContent() {
 
     return (
       <div className="space-y-4 text-black">
-        <div className="mb-4 flex items-center justify-between">
-          <button
-            onClick={() => handleCreateClick(dialog.id, "agent")}
-            className="button"
-          >
-            Create Agent
-          </button>
-          <ConnectWalletButton />
-        </div>
-        {agentsQuery.isLoading && (
-          <div className="text-center text-sm text-gray-600">
-            Loading agents...
-          </div>
-        )}
-
-        {agentsQuery.error && (
-          <div className="text-center text-sm text-red-500">
-            Error loading agents: {agentsQuery.error.message}
-          </div>
-        )}
-
-        {agentsQuery.data && (
-          <div className="mobile-grid grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            {agentsQuery.data.agents.map((agent) => (
-              <div
-                key={agent.id}
-                onClick={() => handleAgentClick(agent, dialog.id)}
-                className="cursor-pointer rounded bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-[1.02]"
+        {!publicKey ? (
+          <WalletRequiredMessage featureName="Agents" />
+        ) : (
+          <>
+            <div className="mb-4 flex items-center justify-between">
+              <button
+                onClick={() => handleCreateClick(dialog.id, "agent")}
+                className="button"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-start font-medium text-black">
-                      {agent.name}
-                    </h3>
-                    {agent.visibility === "private" && (
-                      <span className="rounded bg-gray-100 px-1 text-xs text-gray-600">
-                        Private
-                      </span>
-                    )}
-                    {agent.canLaunchToken && (
-                      <span className="rounded bg-purple-100 px-1 text-xs text-purple-600">
-                        Token Launcher
-                      </span>
-                    )}
-                  </div>
-                  <span
-                    className={`h-2 w-2 rounded-full ${
-                      agent.status === "active"
-                        ? "bg-green-500 brightness-200"
-                        : "bg-gray-400"
-                    }`}
-                  />
-                </div>
-                <div className="text-start text-xs font-thin text-gray-500">
-                  {agent.type}
-                </div>
-                <div className="my-1 text-start text-xs font-thin text-gray-800">
-                  {agent.description}
-                </div>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {agent.traits?.map((trait) => (
-                    <span
-                      key={trait}
-                      className="rounded bg-blue-100 px-1 text-xs text-blue-800"
-                    >
-                      {trait}
-                    </span>
-                  ))}
-                </div>
-                <div className="mt-1 text-xs text-gray-500">
-                  {formatTimestamp(agent.createdAt)}
-                </div>
+                Create Agent
+              </button>
+            </div>
+            {agentsQuery.isLoading && (
+              <div className="text-center text-sm text-gray-600">
+                Loading agents...
               </div>
-            ))}
-          </div>
+            )}
+
+            {agentsQuery.error && (
+              <div className="text-center text-sm text-red-500">
+                Error loading agents: {agentsQuery.error.message}
+              </div>
+            )}
+
+            {agentsQuery.data && (
+              <div className="mobile-grid grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                {agentsQuery.data.agents.map((agent) => (
+                  <div
+                    key={agent.id}
+                    onClick={() => handleAgentClick(agent, dialog.id)}
+                    className="cursor-pointer rounded bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-[1.02]"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-start font-medium text-black">
+                          {agent.name}
+                        </h3>
+                        {agent.visibility === "private" && (
+                          <span className="rounded bg-gray-100 px-1 text-xs text-gray-600">
+                            Private
+                          </span>
+                        )}
+                        {agent.canLaunchToken && (
+                          <span className="rounded bg-purple-100 px-1 text-xs text-purple-600">
+                            Token Launcher
+                          </span>
+                        )}
+                      </div>
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          agent.status === "active"
+                            ? "bg-green-500 brightness-200"
+                            : "bg-gray-400"
+                        }`}
+                      />
+                    </div>
+                    <div className="text-start text-xs font-thin text-gray-500">
+                      {agent.type}
+                    </div>
+                    <div className="my-1 text-start text-xs font-thin text-gray-800">
+                      {agent.description}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {agent.traits?.map((trait) => (
+                        <span
+                          key={trait}
+                          className="rounded bg-blue-100 px-1 text-xs text-blue-800"
+                        >
+                          {trait}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500">
+                      {formatTimestamp(agent.createdAt)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     );

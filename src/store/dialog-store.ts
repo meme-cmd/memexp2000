@@ -18,6 +18,7 @@ export type DialogId =
   | "CHAT"
   | "CREATE_AGENT"
   | "CREATE_BACKROOM"
+  | "PUBLIC_CHAT"
   | "USER";
 
 export const DIALOG_CONTENT: Record<DialogId, DialogContent> = {
@@ -52,6 +53,10 @@ export const DIALOG_CONTENT: Record<DialogId, DialogContent> = {
   CREATE_BACKROOM: {
     title: "Create Backroom",
     desc: "Create a New Backroom",
+  },
+  PUBLIC_CHAT: {
+    title: "Public Chat",
+    desc: "Chat with other wallet users",
   },
   USER: {
     title: "User",
@@ -121,6 +126,28 @@ export const useDialogStore = create<DialogStore>((set, get) => ({
         title: "Create Backroom",
         data: null,
       });
+    }
+    if (action === "connect-wallet") {
+      // Simulate click on the wallet button (will be handled by wallet adapter)
+      setTimeout(() => {
+        // Try to find the wallet button in our hidden div
+        const connectWalletDiv = document.getElementById('connect-wallet-button');
+        if (connectWalletDiv) {
+          // Make it temporarily visible
+          connectWalletDiv.classList.add('visible');
+          
+          // Find the button inside
+          const walletButton = connectWalletDiv.querySelector('button') as HTMLElement;
+          if (walletButton) {
+            walletButton.click();
+          }
+          
+          // Hide it again after some time
+          setTimeout(() => {
+            connectWalletDiv.classList.remove('visible');
+          }, 2000);
+        }
+      }, 100);
     }
   },
   goBack: (dialogId) => {

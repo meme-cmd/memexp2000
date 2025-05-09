@@ -331,3 +331,10 @@
 .mobile-dialog-content span.text-xs {
   display: inline-block !important;
 }
+
+/* Add this to the bottom of the file */
+.icon-img {
+  filter: drop-shadow(1px 1px 1px rgba(0, 0, 0, 0.3));
+  background-color: transparent !important;
+  object-fit: contain;
+}
