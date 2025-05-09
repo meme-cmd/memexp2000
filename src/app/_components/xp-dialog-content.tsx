@@ -218,7 +218,7 @@ export function XPDialogContent() {
           <div className="flex items-center justify-between">
             <button
               onClick={() => handleCreateClick(dialog.id, "backroom")}
-              className="rounded border border-black bg-[#00009e] px-4 py-2 text-xs text-white transition-colors hover:bg-blue-600"
+              className="xp-button primary"
             >
               Create Backroom
             </button>
@@ -288,7 +288,7 @@ export function XPDialogContent() {
         <div className="mb-4 flex items-center justify-between">
           <button
             onClick={() => handleCreateClick(dialog.id, "agent")}
-            className="rounded border border-black bg-[#00009e] px-4 py-2 text-sm text-white transition-colors hover:bg-blue-600"
+            className="xp-button primary"
           >
             Create Agent
           </button>
