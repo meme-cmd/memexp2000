@@ -1,5 +1,6 @@
 import "@/styles/globals.css";
 import "@/styles/xp.css";
+import "@/styles/xp-integration.css";
 import localFont from "next/font/local";
 import { ToastNotificationDisplay } from "@/app/_components/toast";
 import { TRPCReactProvider } from "@/trpc/react";

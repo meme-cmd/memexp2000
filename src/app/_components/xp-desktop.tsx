@@ -109,17 +109,29 @@ export function XPDesktop() {
     };
   }, [selectIcon]);
   
+  // Get current time for taskbar clock
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+    
+    return () => clearInterval(timer);
+  }, []);
+  
+  const formatTime = (date: Date) => {
+    return date.toLocaleString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+  
   return (
     <div 
       ref={desktopRef}
-      className="absolute inset-0 w-full h-full"
-      style={{
-        backgroundColor: '#008080',
-        backgroundImage: "url('https://i.imgur.com/MRg20yv.jpg')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat'
-      }}
+      className="xp-desktop"
       onMouseMove={onMouseMove}
       onMouseUp={onMouseUp}
       onMouseLeave={onMouseUp}
@@ -149,26 +161,26 @@ export function XPDesktop() {
       ))}
       
       {/* Windows XP Taskbar */}
-      <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-r from-[#235edc] to-[#225bda] shadow-md flex items-center px-1 border-t border-[#6b8fe4]">
-        <button className="h-8 px-2 flex items-center rounded bg-gradient-to-b from-[#3c8b3d] to-[#277228] hover:from-[#47a448] hover:to-[#2b8a2f] mr-1 border border-[#184517]">
+      <div className="xp-taskbar">
+        <button className="xp-start-button">
           <span className="text-white font-bold drop-shadow-md">start</span>
         </button>
         <div className="flex-1"></div>
-        <div className="mr-2 text-white text-sm">12:45 AM</div>
+        <div className="mr-2 text-white text-sm">{formatTime(currentTime)}</div>
       </div>
       
       {/* Desktop cleanup notification */}
-      <div className="absolute bottom-12 right-4 bg-white p-3 rounded shadow-md border border-gray-400 w-72 flex">
-        <div className="mr-2 text-yellow-500 mt-1">
+      <div className="xp-notification">
+        <div className="xp-notification-icon">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z"/>
           </svg>
         </div>
-        <div>
-          <p className="font-bold text-sm">There are unused icons on your desktop</p>
+        <div className="xp-notification-content">
+          <h4 className="font-bold">There are unused icons on your desktop</h4>
           <p className="text-xs mt-1">The desktop cleanup wizard can help you clean up your desktop. Click this balloon to start the wizard.</p>
         </div>
-        <button className="absolute -top-1 -right-1 text-xs font-bold bg-gray-200 w-4 h-4 flex items-center justify-center rounded">×</button>
+        <button className="xp-notification-close">×</button>
       </div>
     </div>
   );

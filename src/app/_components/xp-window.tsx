@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { DialogId } from '@/store/dialog-store';
+import { cn } from "@/lib/utils";
 
 interface XPWindowProps {
   title: string;
@@ -67,7 +68,7 @@ export function XPWindow({
   return (
     <div
       ref={windowRef}
-      className="xp-window"
+      className="xp-window window"
       style={{
         ...style,
         left: position.x,
@@ -82,22 +83,22 @@ export function XPWindow({
       onMouseLeave={stopDrag}
     >
       <div 
-        className="xp-window-header"
+        className="xp-window-header title-bar"
         onMouseDown={startDrag}
       >
-        <div className="xp-window-title">
+        <div className="xp-window-title title-bar-text">
           {title}
         </div>
         <div className="xp-window-controls">
           {onBack && (
-            <button className="xp-window-button" onClick={onBack}>
+            <button className="xp-window-button" onClick={onBack} title="Back">
               ←
             </button>
           )}
-          <button className="xp-window-button" onClick={(e) => e.stopPropagation()}>
+          <button className="xp-window-button" onClick={(e) => e.stopPropagation()} title="Minimize">
             -
           </button>
-          <button className="xp-window-button" onClick={(e) => e.stopPropagation()}>
+          <button className="xp-window-button" onClick={(e) => e.stopPropagation()} title="Maximize">
             □
           </button>
           <button 
@@ -106,12 +107,13 @@ export function XPWindow({
               e.stopPropagation();
               onClose();
             }}
+            title="Close"
           >
             ×
           </button>
         </div>
       </div>
-      <div className="xp-window-content" style={{ height: 'calc(100% - 30px)', overflow: 'auto' }}>
+      <div className="xp-window-content window-body" style={{ height: 'calc(100% - 30px)', overflow: 'auto' }}>
         {children}
       </div>
     </div>
