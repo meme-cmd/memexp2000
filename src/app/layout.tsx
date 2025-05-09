@@ -1,4 +1,5 @@
 import "@/styles/globals.css";
+import "@/styles/xp.css";
 import localFont from "next/font/local";
 import { ToastNotificationDisplay } from "@/app/_components/toast";
 import { TRPCReactProvider } from "@/trpc/react";
@@ -11,9 +12,9 @@ const chicago = localFont({
 });
 
 export const metadata = {
-  title: "MakeWithZync",
+  title: "Meme XP 2000",
   description:
-    "zync - Create agents, create backrooms, charge users to use your agents in their backrooms. Launch your token!",
+    "Meme XP 2000 - Create agents, create backrooms, charge users to use your agents in their backrooms. Launch your token!",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 

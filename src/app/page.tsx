@@ -1,16 +1,13 @@
-import { DesktopIcons } from "./_components/desktop-icons";
+import { XPDesktop } from "./_components/xp-desktop";
 import { MobileDock } from "./_components/mobile-dock";
-import { Containooor } from "./_components/container";
-import { DialogContent } from "./_components/dialog-content";
+import { XPDialogContent } from "./_components/xp-dialog-content";
 
 export default function Home() {
   return (
-    <Containooor>
-      <main className="mobile-content-container relative h-screen w-screen overflow-hidden">
-        <DesktopIcons />
-        <MobileDock />
-        <DialogContent />
-      </main>
-    </Containooor>
+    <main className="relative h-screen w-screen overflow-hidden">
+      <XPDesktop />
+      <MobileDock />
+      <XPDialogContent />
+    </main>
   );
 }
