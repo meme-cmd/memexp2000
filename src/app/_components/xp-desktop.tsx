@@ -4,11 +4,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useDialogStore } from "@/store/dialog-store";
 import type { DialogId } from "@/store/dialog-store";
 import { cn } from "@/lib/utils";
+import Image from 'next/image';
 
 interface Icon {
   id: string;
   title: string;
-  svg: React.ReactNode;
+  imagePath: string;
   position: { x: number; y: number };
 }
 
@@ -18,36 +19,19 @@ export function XPDesktop() {
     { 
       id: "AGENTS", 
       title: "Agents", 
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4B9CD3" width="48" height="48">
-          <circle cx="12" cy="12" r="10" fill="#0078D7" />
-          <path d="M12 6a2 2 0 100 4 2 2 0 000-4z" fill="white" />
-          <path d="M18 14c-.1-2.2-1.8-4-4-4h-4c-2.2 0-3.9 1.8-4 4v2h12v-2z" fill="white" />
-        </svg>
-      ),
+      imagePath: "/xp-assets/icons/agents.svg",
       position: { x: 20, y: 20 }
     },
     { 
       id: "BACKROOMS", 
       title: "Backrooms", 
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4B9CD3" width="48" height="48">
-          <rect x="3" y="5" width="18" height="14" rx="2" fill="#FFC83D" />
-          <rect x="6" y="8" width="5" height="8" rx="1" fill="#fff" />
-          <rect x="13" y="8" width="5" height="8" rx="1" fill="#fff" />
-        </svg>
-      ),
+      imagePath: "/xp-assets/icons/backrooms.svg",
       position: { x: 20, y: 100 }
     },
     { 
       id: "USER", 
       title: "User Profile", 
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4B9CD3" width="48" height="48">
-          <circle cx="12" cy="8" r="4" fill="#FFAA44" />
-          <path d="M20 19v1a1 1 0 01-1 1H5a1 1 0 01-1-1v-1a6 6 0 0116 0z" fill="#FFAA44" />
-        </svg>
-      ),
+      imagePath: "/xp-assets/icons/user.svg",
       position: { x: 20, y: 180 }
     }
   ]);
@@ -152,7 +136,13 @@ export function XPDesktop() {
           onDoubleClick={() => openDialog(icon.id as DialogId)}
         >
           <div className="h-16 w-16 drop-shadow-[0_0_2px_rgba(0,0,0,0.5)]">
-            {icon.svg}
+            <Image 
+              src={icon.imagePath} 
+              alt={icon.title}
+              width={48}
+              height={48}
+              className="object-contain mx-auto"
+            />
           </div>
           <span className="mt-1 text-center text-sm font-bold text-white drop-shadow-[1px_1px_#000]">
             {icon.title}

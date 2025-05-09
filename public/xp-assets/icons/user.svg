@@ -1,0 +1,12 @@
+<svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background Circle -->
+  <circle cx="24" cy="24" r="20" fill="#1084D0" stroke="#0A5999" stroke-width="1"/>
+  <!-- User Head -->
+  <circle cx="24" cy="19" r="7" fill="#FFFFFF"/>
+  <!-- User Body -->
+  <path d="M12,38 C12,31 17.4,26 24,26 C30.6,26 36,31 36,38" fill="#FFFFFF"/>
+  <!-- Shadow Elements -->
+  <path d="M24,26 C30.6,26 36,31 36,38 L30,38 C30,34 27.3,31 24,31 L24,26 Z" fill="#DFECF9" fill-opacity="0.6"/>
+  <!-- Highlight Elements -->
+  <path d="M24,26 C17.4,26 12,31 12,38 L18,38 C18,34 20.7,31 24,31 L24,26 Z" fill="#0A5999" fill-opacity="0.1"/>
+</svg> 
