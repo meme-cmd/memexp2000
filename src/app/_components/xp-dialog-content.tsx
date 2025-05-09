@@ -3,12 +3,22 @@
 import { useEffect } from "react";
 import { XPWindow } from "./xp-window";
 import { MobileDialog } from "./mobile-dialog";
+import { ConnectWalletButton } from "./connect-wallet-button";
+import { UserProfileForm } from "./user-profile-form";
+import { CreateAgentForm } from "./create-agent-form";
+import { CreateBackroomForm } from "./create-backroom-form";
+import { ChatInterface } from "./chat-interface";
+import { BackroomChat } from "./backroom-chat";
 import { useDialogStore } from "@/store/dialog-store";
 import type { DialogState, DialogId } from "@/store/dialog-store";
 import { useNavigationStore } from "@/store/navigation-store";
 import { useChatStore } from "@/store/chat-store";
 import { useState } from "react";
 import { useUser } from "@/hooks/use-user";
+import { api } from "@/trpc/react";
+import { agentToast } from "./agent-toast";
+import type { Agent } from "@/types/agent";
+import type { Backroom } from "@/types/backroom";
 
 function useWindowSize() {
   const [size, setSize] = useState({
@@ -36,13 +46,28 @@ function useWindowSize() {
 }
 
 export function XPDialogContent() {
-  const { openDialogs, closeDialog } = useDialogStore();
-  const { clearCurrentConversation } = useChatStore();
-  const { currentView } = useNavigationStore();
   const { publicKey } = useUser();
+  const { openDialogs, closeDialog, handleButtonClick } = useDialogStore();
+  const { setCurrentConversation, clearCurrentConversation } = useChatStore();
+  const { currentView } = useNavigationStore();
 
   const windowSize = useWindowSize();
   const isMobile = windowSize.width < 768;
+
+  const agentsQuery = api.r2.listAgents.useQuery(
+    { limit: 1000, creator: publicKey ?? undefined },
+    {
+      enabled: openDialogs.some((d) => d.currentView.id === "AGENTS"),
+      retry: 2,
+      refetchOnWindowFocus: true,
+      staleTime: 1000 * 30,
+    },
+  );
+
+  const backroomsQuery = api.r2.listBackrooms.useQuery(
+    { creator: publicKey ?? undefined },
+    { enabled: openDialogs.some((d) => d.currentView.id === "BACKROOMS") },
+  );
 
   useEffect(() => {
     const store = useDialogStore.getState();
@@ -56,6 +81,16 @@ export function XPDialogContent() {
     }
   }, [currentView]);
 
+  const formatTimestamp = (date: Date) => {
+    return date.toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   const handleClose = (dialogId: DialogId) => {
     closeDialog(dialogId);
     clearCurrentConversation();
@@ -65,11 +100,277 @@ export function XPDialogContent() {
     useDialogStore.getState().goBack(dialogId);
   };
 
+  const handleCreateAgentSuccess = () => {
+    void agentsQuery.refetch();
+  };
+
+  const handleAgentClick = (agent: Agent, dialogId: DialogId) => {
+    try {
+      if (!publicKey) {
+        agentToast.walletRequired("Connect wallet to interact with agents");
+        handleButtonClick("connect-wallet");
+        return;
+      }
+
+      setCurrentConversation(publicKey, agent.id);
+      const view = {
+        id: "CHAT" as DialogId,
+        title: agent.name,
+        data: agent,
+      };
+      const store = useDialogStore.getState();
+      store.updateDialogView(dialogId, view);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes("rejected") ||
+          error.message.includes("User rejected"))
+      ) {
+        agentToast.info("Transaction was cancelled by user");
+      } else {
+        agentToast.error("Failed to open chat");
+      }
+    }
+  };
+
+  const handleBackroomClick = (backroom: Backroom, dialogId: DialogId) => {
+    try {
+      const view = {
+        id: "BACKROOM_DETAIL" as DialogId,
+        title: backroom.name,
+        data: { id: backroom.id },
+      };
+      const store = useDialogStore.getState();
+      store.updateDialogView(dialogId, view);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes("rejected") ||
+          error.message.includes("User rejected"))
+      ) {
+        agentToast.info("Transaction was cancelled by user");
+      } else {
+        agentToast.error("Failed to open backroom");
+      }
+    }
+  };
+
+  const handleCreateClick = (
+    dialogId: DialogId,
+    type: "agent" | "backroom",
+  ) => {
+    try {
+      if (!publicKey) {
+        agentToast.walletRequired(`Connect wallet to create ${type}s`);
+        return;
+      }
+
+      const view = {
+        id: type === "agent" ? "CREATE_AGENT" : ("CREATE_BACKROOM" as DialogId),
+        title: type === "agent" ? "Create Agent" : "Create Backroom",
+        data: null,
+      };
+      const store = useDialogStore.getState();
+      store.updateDialogView(dialogId, view);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.message.includes("rejected") ||
+          error.message.includes("User rejected"))
+      ) {
+        agentToast.info("Transaction was cancelled by user");
+      } else {
+        agentToast.error(`Failed to open ${type} creation dialog`);
+      }
+    }
+  };
+
+  const renderDialogContent = (dialog: DialogState) => {
+    const currentView = dialog.currentView;
+
+    if (currentView.id === "CHAT") {
+      const agent = currentView.data as Agent | null;
+      if (!agent) return null;
+      return <ChatInterface userId={publicKey!} agentId={agent.id} />;
+    }
+
+    if (currentView.id === "BACKROOM_DETAIL") {
+      const data = currentView.data as { id: string } | null;
+      if (!data) return null;
+      return <BackroomChat backroomId={data.id} />;
+    }
+
+    if (currentView.id === "CREATE_AGENT") {
+      return <CreateAgentForm onSuccess={handleCreateAgentSuccess} />;
+    }
+
+    if (currentView.id === "CREATE_BACKROOM") {
+      return <CreateBackroomForm />;
+    }
+
+    if (currentView.id === "USER") {
+      return <UserProfileForm />;
+    }
+
+    if (currentView.id === "BACKROOMS") {
+      return (
+        <div className="space-y-4 text-black">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => handleCreateClick(dialog.id, "backroom")}
+              className="rounded border border-black bg-[#00009e] px-4 py-2 text-xs text-white transition-colors hover:bg-blue-600"
+            >
+              Create Backroom
+            </button>
+            <ConnectWalletButton />
+          </div>
+          {backroomsQuery.isLoading && (
+            <div className="text-center text-sm text-gray-600">
+              Loading backrooms...
+            </div>
+          )}
+
+          {backroomsQuery.error && (
+            <div className="text-center text-sm text-red-500">
+              Error loading backrooms: {backroomsQuery.error.message}
+            </div>
+          )}
+
+          {backroomsQuery.data && (
+            <div className="mobile-grid grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+              {backroomsQuery.data.backrooms.map((backroom) => (
+                <div
+                  key={backroom.id}
+                  onClick={() => handleBackroomClick(backroom, dialog.id)}
+                  className="cursor-pointer rounded bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-[1.02]"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-start font-medium text-black">
+                        {backroom.name}
+                      </h3>
+                      {backroom.visibility === "private" && (
+                        <span className="rounded bg-gray-100 px-1 text-xs text-gray-600">
+                          Private
+                        </span>
+                      )}
+                    </div>
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        backroom.status === "active"
+                          ? "bg-green-500 brightness-200"
+                          : "bg-gray-400"
+                      }`}
+                    />
+                  </div>
+                  <div className="text-start text-xs font-thin text-gray-500">
+                    {backroom.topic}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    <span className="rounded bg-purple-100 px-1 text-xs text-purple-800">
+                      {backroom.messages.length}/{backroom.messageLimit}{" "}
+                      messages
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-gray-500">
+                    {formatTimestamp(backroom.createdAt)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4 text-black">
+        <div className="mb-4 flex items-center justify-between">
+          <button
+            onClick={() => handleCreateClick(dialog.id, "agent")}
+            className="rounded border border-black bg-[#00009e] px-4 py-2 text-sm text-white transition-colors hover:bg-blue-600"
+          >
+            Create Agent
+          </button>
+          <ConnectWalletButton />
+        </div>
+        {agentsQuery.isLoading && (
+          <div className="text-center text-sm text-gray-600">
+            Loading agents...
+          </div>
+        )}
+
+        {agentsQuery.error && (
+          <div className="text-center text-sm text-red-500">
+            Error loading agents: {agentsQuery.error.message}
+          </div>
+        )}
+
+        {agentsQuery.data && (
+          <div className="mobile-grid grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            {agentsQuery.data.agents.map((agent) => (
+              <div
+                key={agent.id}
+                onClick={() => handleAgentClick(agent, dialog.id)}
+                className="cursor-pointer rounded bg-white px-3 py-2 text-sm shadow transition-transform hover:scale-[1.02]"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-start font-medium text-black">
+                      {agent.name}
+                    </h3>
+                    {agent.visibility === "private" && (
+                      <span className="rounded bg-gray-100 px-1 text-xs text-gray-600">
+                        Private
+                      </span>
+                    )}
+                    {agent.canLaunchToken && (
+                      <span className="rounded bg-purple-100 px-1 text-xs text-purple-600">
+                        Token Launcher
+                      </span>
+                    )}
+                  </div>
+                  <span
+                    className={`h-2 w-2 rounded-full ${
+                      agent.status === "active"
+                        ? "bg-green-500 brightness-200"
+                        : "bg-gray-400"
+                    }`}
+                  />
+                </div>
+                <div className="text-start text-xs font-thin text-gray-500">
+                  {agent.type}
+                </div>
+                <div className="my-1 text-start text-xs font-thin text-gray-800">
+                  {agent.description}
+                </div>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {agent.traits?.map((trait) => (
+                    <span
+                      key={trait}
+                      className="rounded bg-blue-100 px-1 text-xs text-blue-800"
+                    >
+                      {trait}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  {formatTimestamp(agent.createdAt)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       {openDialogs.map((dialog) => {
         const title = dialog.currentView.title;
         const showBack = useDialogStore.getState().canGoBack(dialog.id);
+        const content = renderDialogContent(dialog);
 
         if (isMobile) {
           return (
@@ -82,14 +383,7 @@ export function XPDialogContent() {
               onBack={showBack ? () => handleBack(dialog.id) : undefined}
               className="pb-safe"
             >
-              <div className="p-4">
-                <h3 className="mb-2 text-lg font-bold">
-                  {dialog.currentView.title} Content
-                </h3>
-                <p>
-                  This dialog would typically show {dialog.id} content. Due to the Windows XP theme, the content rendering has been simplified.
-                </p>
-              </div>
+              {content}
             </MobileDialog>
           );
         }
@@ -105,14 +399,7 @@ export function XPDialogContent() {
             style={{ zIndex: dialog.zIndex }}
             onClick={() => useDialogStore.getState().bringToFront(dialog.id)}
           >
-            <div className="p-4">
-              <h3 className="mb-2 text-lg font-bold">
-                {dialog.currentView.title} Content
-              </h3>
-              <p>
-                This dialog would typically show {dialog.id} content. Due to the Windows XP theme, the content rendering has been simplified.
-              </p>
-            </div>
+            {content}
           </XPWindow>
         );
       })}

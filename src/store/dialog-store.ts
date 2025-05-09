@@ -18,9 +18,7 @@ export type DialogId =
   | "CHAT"
   | "CREATE_AGENT"
   | "CREATE_BACKROOM"
-  | "USER"
-  | "RECYCLE"
-  | "INTERNET";
+  | "USER";
 
 export const DIALOG_CONTENT: Record<DialogId, DialogContent> = {
   AGENTS: {
@@ -58,14 +56,6 @@ export const DIALOG_CONTENT: Record<DialogId, DialogContent> = {
   USER: {
     title: "User",
     desc: "User Profile",
-  },
-  RECYCLE: {
-    title: "Recycle Bin",
-    desc: "Deleted Items",
-  },
-  INTERNET: {
-    title: "Internet Explorer",
-    desc: "Web Browser",
   },
 };
 

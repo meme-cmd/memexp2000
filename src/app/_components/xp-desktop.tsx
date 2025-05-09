@@ -49,33 +49,6 @@ export function XPDesktop() {
         </svg>
       ),
       position: { x: 20, y: 180 }
-    },
-    { 
-      id: "RECYCLE", 
-      title: "Recycle Bin", 
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4B9CD3" width="48" height="48">
-          <path d="M9 3v1H4v2h1v13a2 2 0 002 2h10a2 2 0 002-2V6h1V4h-5V3H9z" fill="#57A051" />
-          <path d="M10 7h1v12h-1zM13 7h1v12h-1z" fill="white" />
-        </svg>
-      ),
-      position: { x: 20, y: 260 }
-    },
-    { 
-      id: "INTERNET", 
-      title: "Internet Explorer", 
-      svg: (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#4B9CD3" width="48" height="48">
-          <circle cx="12" cy="12" r="10" fill="#0078D7" />
-          <circle cx="12" cy="12" r="8" fill="#FFFFFF" />
-          <circle cx="12" cy="12" r="6" fill="#0078D7" />
-          <path d="M12 6 L14 8 L12 10 L10 8 Z" fill="#FFFFFF" />
-          <path d="M12 14 L14 16 L12 18 L10 16 Z" fill="#FFFFFF" />
-          <path d="M6 12 L8 10 L10 12 L8 14 Z" fill="#FFFFFF" />
-          <path d="M14 12 L16 10 L18 12 L16 14 Z" fill="#FFFFFF" />
-        </svg>
-      ),
-      position: { x: 20, y: 340 }
     }
   ]);
   
