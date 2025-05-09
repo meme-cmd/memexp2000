@@ -218,7 +218,7 @@ export function XPDialogContent() {
           <div className="flex items-center justify-between">
             <button
               onClick={() => handleCreateClick(dialog.id, "backroom")}
-              className="xp-button primary"
+              className="button"
             >
               Create Backroom
             </button>
@@ -288,7 +288,7 @@ export function XPDialogContent() {
         <div className="mb-4 flex items-center justify-between">
           <button
             onClick={() => handleCreateClick(dialog.id, "agent")}
-            className="xp-button primary"
+            className="button"
           >
             Create Agent
           </button>

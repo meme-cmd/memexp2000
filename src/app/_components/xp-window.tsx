@@ -63,14 +63,24 @@ export function XPWindow({
     setIsDragging(false);
   };
 
+  const handleBackClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onBack) onBack();
+  };
+
   if (!isOpen) return null;
+
+  // Use the responsive styling class for mobile
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const windowClass = cn('window', { 'mobile-window': isMobile });
 
   return (
     <div
       ref={windowRef}
-      className="xp-window window"
+      className={windowClass}
       style={{
         ...style,
+        position: 'absolute',
         left: position.x,
         top: position.y,
         width: 500,
@@ -83,37 +93,31 @@ export function XPWindow({
       onMouseLeave={stopDrag}
     >
       <div 
-        className="xp-window-header title-bar"
+        className="title-bar"
         onMouseDown={startDrag}
       >
-        <div className="xp-window-title title-bar-text">
+        <div className="title-bar-text">
           {title}
         </div>
-        <div className="xp-window-controls">
+        <div className="title-bar-controls">
           {onBack && (
-            <button className="xp-window-button" onClick={onBack} title="Back">
-              ←
-            </button>
+            <button 
+              aria-label="Back"
+              onClick={handleBackClick}
+            >←</button>
           )}
-          <button className="xp-window-button" onClick={(e) => e.stopPropagation()} title="Minimize">
-            -
-          </button>
-          <button className="xp-window-button" onClick={(e) => e.stopPropagation()} title="Maximize">
-            □
-          </button>
+          <button aria-label="Minimize"></button>
+          <button aria-label="Maximize"></button>
           <button 
-            className="xp-window-button close" 
+            aria-label="Close"
             onClick={(e) => {
               e.stopPropagation();
               onClose();
             }}
-            title="Close"
-          >
-            ×
-          </button>
+          ></button>
         </div>
       </div>
-      <div className="xp-window-content window-body" style={{ height: 'calc(100% - 30px)', overflow: 'auto' }}>
+      <div className="window-body" style={{ height: 'calc(100% - 30px)', overflow: 'auto' }}>
         {children}
       </div>
     </div>

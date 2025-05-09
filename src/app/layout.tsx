@@ -1,6 +1,4 @@
 import "@/styles/globals.css";
-import "@/styles/xp.css";
-import "@/styles/xp-integration.css";
 import localFont from "next/font/local";
 import { ToastNotificationDisplay } from "@/app/_components/toast";
 import { TRPCReactProvider } from "@/trpc/react";
@@ -26,6 +24,19 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={chicago.variable}>
+      <head>
+        <link rel="stylesheet" href="https://unpkg.com/xp.css" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <style>{`
+          /* Responsive adjustments */
+          @media (max-width: 768px) {
+            .desktop-only { display: none !important; }
+            .window { width: 100% !important; height: auto !important; position: fixed !important; top: 0 !important; left: 0 !important; }
+            .taskbar { height: auto !important; padding: 5px !important; }
+            .taskbar-icons { flex-wrap: wrap !important; justify-content: center !important; }
+          }
+        `}</style>
+      </head>
       <body>
         <TRPCReactProvider>
           <ToastNotificationDisplay />
